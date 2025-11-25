@@ -35,6 +35,7 @@ else:
     print("错误: 找不到 fgsm.py 文件")
     sys.exit(1)
 
+import random
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -81,9 +82,10 @@ def main():
                       if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
         
         if image_files:
-            # 使用第一张图片
-            image_path = os.path.join(images_dir, image_files[0])
-            print(f"从 {images_dir}/ 目录加载图片: {os.path.basename(image_path)}")
+            # 随机选择一张图片
+            selected_file = random.choice(image_files)
+            image_path = os.path.join(images_dir, selected_file)
+            print(f"从 {images_dir}/ 目录随机加载图片: {os.path.basename(image_path)}")
             
             try:
                 transform = transforms.Compose([
