@@ -5,7 +5,6 @@ from abc import ABCMeta
 from abc import abstractmethod
 import torch.utils.data as Data
 import torch
-import torchvision
 import importlib
 
 class Attack(object):
