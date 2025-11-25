@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
+from torchvision.models import ResNet18_Weights
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -24,14 +25,20 @@ from mi_smi import MISMI
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei']
 plt.rcParams['axes.unicode_minus'] = False
 
+# ImageNet类别名称
+IMAGENET_LABELS = []
+
 
 def load_pretrained_model():
     """
     加载预训练的ResNet模型（使用ImageNet预训练权重）
     """
     print("正在加载预训练模型...")
-    model = torchvision.models.resnet18(pretrained=True)
+    weights = ResNet18_Weights.DEFAULT
+    model = torchvision.models.resnet18(weights=weights)
     model.eval()
+    global IMAGENET_LABELS
+    IMAGENET_LABELS = weights.meta.get("categories", [])
     return model
 
 
@@ -61,9 +68,12 @@ def load_test_image():
 
 def get_imagenet_class_name(idx):
     """
-    获取ImageNet类别名称（简化版）
+    获取ImageNet类别名称
     """
-    # 这里只返回索引，实际使用时可以加载完整的ImageNet类别列表
+    if isinstance(idx, torch.Tensor):
+        idx = idx.item()
+    if 0 <= idx < len(IMAGENET_LABELS):
+        return IMAGENET_LABELS[idx]
     return f"类别 {idx}"
 
 
@@ -93,7 +103,8 @@ def demo_single_attack(attack_class, attack_name, model, device, images, labels,
         original_pred = original_outputs.argmax(1).cpu().numpy()
         original_conf = torch.softmax(original_outputs, dim=1).max(1)[0].cpu().numpy()
     
-    print(f"原始预测: 类别 {original_pred[0]}, 置信度: {original_conf[0]:.4f}")
+    orig_label_name = get_imagenet_class_name(original_pred[0])
+    print(f"原始预测: 类别 {original_pred[0]} ({orig_label_name}), 置信度: {original_conf[0]:.4f}")
     
     # 生成对抗样本
     print("正在生成对抗样本...")
@@ -105,7 +116,8 @@ def demo_single_attack(attack_class, attack_name, model, device, images, labels,
         adv_pred = adv_outputs.argmax(1).cpu().numpy()
         adv_conf = torch.softmax(adv_outputs, dim=1).max(1)[0].cpu().numpy()
     
-    print(f"对抗样本预测: 类别 {adv_pred[0]}, 置信度: {adv_conf[0]:.4f}")
+    adv_label_name = get_imagenet_class_name(adv_pred[0])
+    print(f"对抗样本预测: 类别 {adv_pred[0]} ({adv_label_name}), 置信度: {adv_conf[0]:.4f}")
     
     # 计算扰动大小
     perturbation = (adversarial_images - images).abs().max().item()
@@ -122,7 +134,9 @@ def demo_single_attack(attack_class, attack_name, model, device, images, labels,
         'original_pred': original_pred[0],
         'adversarial_pred': adv_pred[0],
         'original_conf': original_conf[0],
+        'original_label_name': orig_label_name,
         'adversarial_conf': adv_conf[0],
+        'adversarial_label_name': adv_label_name,
         'perturbation': perturbation,
         'attack_success': attack_success
     }
@@ -154,12 +168,16 @@ def visualize_results(results_list):
         
         # 绘制
         axes[idx, 0].imshow(orig_img)
-        axes[idx, 0].set_title(f"原始图像\n预测: {result['original_pred']} ({result['original_conf']:.3f})")
+        axes[idx, 0].set_title(
+            f"原始图像\n预测: {result['original_pred']} - {result['original_label_name']} ({result['original_conf']:.3f})"
+        )
         axes[idx, 0].axis('off')
         
         axes[idx, 1].imshow(adv_img)
         success_text = "✓ 攻击成功" if result['attack_success'] else "✗ 攻击失败"
-        axes[idx, 1].set_title(f"对抗样本 ({result['attack_name']})\n预测: {result['adversarial_pred']} ({result['adversarial_conf']:.3f})\n{success_text}")
+        axes[idx, 1].set_title(
+            f"对抗样本 ({result['attack_name']})\n预测: {result['adversarial_pred']} - {result['adversarial_label_name']} ({result['adversarial_conf']:.3f})\n{success_text}"
+        )
         axes[idx, 1].axis('off')
         
         axes[idx, 2].imshow(pert_img)

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from .attack import Attack
+from attack import Attack
 
 
 class DIFGSM(Attack):

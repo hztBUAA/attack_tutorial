@@ -6,7 +6,7 @@ from torch.autograd import Variable
 
 import torchvision
 import random
-from .attack import Attack
+from attack import Attack
 
 
 class SMIFGSM(Attack):

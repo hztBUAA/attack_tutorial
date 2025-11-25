@@ -38,6 +38,7 @@ else:
 import random
 import torch
 import torchvision
+from torchvision.models import ResNet18_Weights
 import torchvision.transforms as transforms
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -46,6 +47,16 @@ import numpy as np
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
+
+# ImageNet类别标签
+IMAGENET_LABELS = []
+
+
+def get_label_name(idx):
+    """根据索引返回ImageNet类别名称"""
+    if 0 <= idx < len(IMAGENET_LABELS):
+        return IMAGENET_LABELS[idx]
+    return f"类别 {idx}"
 
 
 def main():
@@ -60,7 +71,10 @@ def main():
     # 2. 加载预训练模型
     print("\n正在加载ResNet18模型...")
     try:
-        model = torchvision.models.resnet18(pretrained=True)
+        weights = ResNet18_Weights.DEFAULT
+        global IMAGENET_LABELS
+        IMAGENET_LABELS = weights.meta.get("categories", [])
+        model = torchvision.models.resnet18(weights=weights)
         model.eval().to(device)
         print("✓ 模型加载成功")
     except Exception as e:
@@ -114,7 +128,8 @@ def main():
         original_pred = predicted.item()
         original_conf = torch.softmax(outputs, dim=1)[0, original_pred].item()
     
-    print(f"原始图像预测: 类别 {original_pred}, 置信度: {original_conf:.4f}")
+    orig_label_name = get_label_name(original_pred)
+    print(f"原始图像预测: 类别 {original_pred} ({orig_label_name}), 置信度: {original_conf:.4f}")
     
     # 4. 创建FGSM攻击
     print("\n正在创建FGSM攻击对象...")
@@ -155,7 +170,8 @@ def main():
         adv_pred = adv_predicted.item()
         adv_conf = torch.softmax(adv_outputs, dim=1)[0, adv_pred].item()
     
-    print(f"对抗样本预测: 类别 {adv_pred}, 置信度: {adv_conf:.4f}")
+    adv_label_name = get_label_name(adv_pred)
+    print(f"对抗样本预测: 类别 {adv_pred} ({adv_label_name}), 置信度: {adv_conf:.4f}")
     
     # 7. 计算扰动
     perturbation = (adversarial_image - test_image).abs()
@@ -170,8 +186,8 @@ def main():
     attack_success = original_pred != adv_pred
     if attack_success:
         print(f"\n🎉 攻击成功！模型被欺骗了")
-        print(f"   原始预测: 类别 {original_pred}")
-        print(f"   对抗预测: 类别 {adv_pred}")
+        print(f"   原始预测: 类别 {original_pred} ({orig_label_name})")
+        print(f"   对抗预测: 类别 {adv_pred} ({adv_label_name})")
     else:
         print(f"\n⚠️  攻击失败，模型仍然正确预测")
         print(f"   提示: 尝试增大 epsilon 值（当前: {config['epsilon']}）")
@@ -184,7 +200,9 @@ def main():
             adversarial_image, 
             original_pred, 
             adv_pred,
+            orig_label_name,
             original_conf,
+            adv_label_name,
             adv_conf,
             max_pert,
             attack_success
@@ -196,7 +214,7 @@ def main():
         traceback.print_exc()
 
 
-def visualize_results(original, adversarial, orig_pred, adv_pred, orig_conf, adv_conf, max_pert, success):
+def visualize_results(original, adversarial, orig_pred, adv_pred, orig_label_name, orig_conf, adv_label_name, adv_conf, max_pert, success):
     """可视化攻击结果"""
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
@@ -214,7 +232,8 @@ def visualize_results(original, adversarial, orig_pred, adv_pred, orig_conf, adv
     
     # 绘制原始图像
     axes[0].imshow(orig_img)
-    axes[0].set_title(f'原始图像\n预测: 类别 {orig_pred}\n置信度: {orig_conf:.3f}', 
+    label_text = orig_label_name or get_label_name(orig_pred)
+    axes[0].set_title(f'原始图像\n预测: {orig_pred} - {label_text}\n置信度: {orig_conf:.3f}', 
                       fontsize=12, fontweight='bold')
     axes[0].axis('off')
     
@@ -222,7 +241,8 @@ def visualize_results(original, adversarial, orig_pred, adv_pred, orig_conf, adv
     color = 'red' if success else 'black'
     success_text = "✓ 攻击成功" if success else "✗ 攻击失败"
     axes[1].imshow(adv_img)
-    axes[1].set_title(f'对抗样本 (FGSM)\n预测: 类别 {adv_pred}\n置信度: {adv_conf:.3f}\n{success_text}', 
+    adv_label_text = adv_label_name or get_label_name(adv_pred)
+    axes[1].set_title(f'对抗样本 (FGSM)\n预测: {adv_pred} - {adv_label_text}\n置信度: {adv_conf:.3f}\n{success_text}', 
                      fontsize=12, fontweight='bold', color=color)
     axes[1].axis('off')
     

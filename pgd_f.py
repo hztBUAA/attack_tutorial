@@ -12,7 +12,7 @@ import torch
 from torch.autograd import Variable
 import copy
 
-from .attack import Attack
+from attack import Attack
 
 class PGD_F(Attack):
     def __init__(self, model=None, device=None, IsTargeted=None, config=None):

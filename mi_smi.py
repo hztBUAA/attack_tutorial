@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 import torchvision
-from .attack import Attack
+from attack import Attack
 import random
 from scipy import stats as st
 import torch.nn.functional as F
@@ -49,7 +49,7 @@ class MISMI(Attack):
             var_xs = torch.clamp(var_xs, min=0, max=1).detach()
         stacked_kernel = self.stacked_kernel.to(self.device)
         
-        momentum = 0  # ³õÊ¼»¯¶¯Á¿Îª0
+        momentum = 0  # ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª0
         for _ in range(self.num_steps1):
             # di
             var_xs = self.T(var_xs)

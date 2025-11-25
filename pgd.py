@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from .attack import Attack
+from attack import Attack
 
 class PGD(Attack):
     def __init__(self, model=None, device=None, IsTargeted=None, config=None):

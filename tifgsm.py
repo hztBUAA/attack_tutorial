@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 from scipy import stats as st
 
-from .attack import Attack
+from attack import Attack
 
 
 class TIFGSM(Attack):
